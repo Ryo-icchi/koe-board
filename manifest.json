@@ -1,6 +1,6 @@
 {
-  "name": "こえ — 文字盤と読み上げ",
-  "short_name": "こえ",
+  "name": "こえ文字盤 — 文字を選んで声で伝える",
+  "short_name": "こえ文字盤",
   "description": "口の麻痺で話せない方が、文字盤と定型文で声を伝えるためのアプリ",
   "lang": "ja",
   "start_url": "./index.html",
