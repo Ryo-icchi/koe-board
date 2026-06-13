@@ -1,6 +1,6 @@
 /* こえ Service Worker — オフライン動作用（cache-first）
    ※アプリを更新したら CACHE のバージョン番号を必ず上げること */
-const CACHE = "koe-v2";
+const CACHE = "koe-v3";
 const ASSETS = [
   "./",
   "./index.html",

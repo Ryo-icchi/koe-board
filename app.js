@@ -81,7 +81,7 @@ function invert(o){const r={};for(const k in o)r[o[k]]=k;return r;}
 const LS_PHRASES = "koe.phrases.v1";
 const LS_FS = "koe.fontscale.v1";
 let phrases = loadPhrases();
-let activeTab = Object.keys(phrases)[0] || "もじ";
+let activeTab = "もじ";   // デフォルトは50音文字盤
 let editing = false;
 
 /* ---------- DOM ---------- */
@@ -131,6 +131,12 @@ function speak(t){
 /* ---------- タブ描画 ---------- */
 function renderTabs(){
   tabsEl.innerHTML = "";
+  // もじ（50音）タブを先頭に（デフォルト表示のため）
+  const kb = document.createElement("button");
+  kb.className = "tab" + (activeTab==="もじ"?" active":"");
+  kb.textContent = "🔤 もじ";
+  kb.onclick = ()=>{ activeTab="もじ"; renderTabs(); renderMain(); };
+  tabsEl.appendChild(kb);
   // 定型文カテゴリ
   Object.keys(phrases).forEach(cat=>{
     const b = document.createElement("button");
@@ -139,17 +145,12 @@ function renderTabs(){
     b.onclick = ()=>{ activeTab = cat; renderTabs(); renderMain(); };
     tabsEl.appendChild(b);
   });
-  // もじ（50音）タブ
-  const kb = document.createElement("button");
-  kb.className = "tab" + (activeTab==="もじ"?" active":"");
-  kb.textContent = "🔤 もじ";
-  kb.onclick = ()=>{ activeTab="もじ"; renderTabs(); renderMain(); };
-  tabsEl.appendChild(kb);
 }
 
 /* ---------- メイン描画 ---------- */
 function renderMain(){
   mainEl.innerHTML = "";
+  document.body.classList.toggle("kana-mode", activeTab === "もじ");
   if(activeTab === "もじ"){ renderKana(); }
   else { renderPhrases(activeTab); }
 }

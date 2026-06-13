@@ -56,14 +56,15 @@ try{
   await send("Page.navigate", {url:`http://127.0.0.1:${PORT}/index.html`});
   await sleep(1200);
 
-  // 1. 起動・プレースホルダ
+  // 1. 起動・プレースホルダ・デフォルトもじ
   check("起動: プレースホルダ表示", await evalJs(send, `document.querySelector('#text').classList.contains('placeholder')`));
   check("起動: タブが描画される(>=2)", await evalJs(send, `document.querySelectorAll('.tab').length >= 2`));
-  check("起動: もじタブが存在", await evalJs(send, `[...document.querySelectorAll('.tab')].some(t=>t.textContent.includes('もじ'))`));
+  check("起動: 先頭タブがもじ", await evalJs(send, `document.querySelector('.tab').textContent.includes('もじ')`));
+  check("起動: デフォルトで50音盤が表示", await evalJs(send, `document.querySelectorAll('#kana .cell:not(.blank)').length > 30`));
+  check("起動: body.kana-mode が付く", await evalJs(send, `document.body.classList.contains('kana-mode')`));
+  check("もじ時: フッター(編集/文字サイズ)が非表示", await evalJs(send, `getComputedStyle(document.querySelector('#footer')).display === 'none'`));
 
-  // 2. 50音入力（もじタブへ）
-  await evalJs(send, `[...document.querySelectorAll('.tab')].find(t=>t.textContent.includes('もじ')).click(); true`);
-  await sleep(150);
+  // 2. 50音入力（既にもじタブ）
   check("50音: 盤が描画される", await evalJs(send, `document.querySelectorAll('#kana .cell:not(.blank)').length > 30`));
   await evalJs(send, `[...document.querySelectorAll('#kana .cell')].find(c=>c.textContent==='あ').click(); true`);
   await evalJs(send, `[...document.querySelectorAll('#kana .cell')].find(c=>c.textContent==='か').click(); true`);
@@ -82,9 +83,10 @@ try{
   await evalJs(send, `document.querySelector('#btnClear').click(); true`);
   check("全消し: プレースホルダに戻る", await evalJs(send, `document.querySelector('#text').classList.contains('placeholder')`));
 
-  // 5. 定型文タップ
-  await evalJs(send, `document.querySelector('.tab').click(); true`); // 先頭(きほん)
+  // 5. 定型文タップ（きほんタブへ）
+  await evalJs(send, `[...document.querySelectorAll('.tab')].find(t=>t.textContent.includes('きほん')).click(); true`);
   await sleep(120);
+  check("定型文時: フッターが表示される", await evalJs(send, `getComputedStyle(document.querySelector('#footer')).display !== 'none'`));
   const firstPhrase = await evalJs(send, `document.querySelector('.phrase span').textContent`);
   await evalJs(send, `document.querySelector('.phrase').click(); true`);
   check("定型文: タップで表示に反映", (await evalJs(send, `document.querySelector('#text').textContent`)) === firstPhrase);
@@ -102,12 +104,14 @@ try{
   check("編集: 追加語が末尾に存在", await evalJs(send, `[...document.querySelectorAll('.phrase span')].some(s=>s.textContent==='テスト追加語')`));
   check("永続: localStorageに保存される", await evalJs(send, `JSON.stringify(JSON.parse(localStorage.getItem('koe.phrases.v1'))).includes('テスト追加語')`));
 
-  // 7. リロードしても残る
+  // 7. リロードしても残る（デフォルトもじ→きほんへ切替して確認）
   await send("Page.navigate", {url:`http://127.0.0.1:${PORT}/index.html`});
   await sleep(1000);
+  await evalJs(send, `[...document.querySelectorAll('.tab')].find(t=>t.textContent.includes('きほん')).click(); true`);
+  await sleep(150);
   check("永続: リロード後も追加語が残る", await evalJs(send, `[...document.querySelectorAll('.phrase span')].some(s=>s.textContent==='テスト追加語')`));
 
-  // 8. フォント倍率
+  // 8. フォント倍率（定型文タブ表示中＝フッター見える状態で）
   await evalJs(send, `[...document.querySelectorAll('#fontBtns .fbtn')].find(b=>b.dataset.fs==='1.2').click(); true`);
   check("文字大: --fs が1.2", (await evalJs(send, `getComputedStyle(document.documentElement).getPropertyValue('--fs').trim()`)) === "1.2");
 
