@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1a4a7a">
+<title>こえ</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<style>
+  :root{
+    --bg:#f4f1ea; --panel:#ffffff; --ink:#1d2733; --line:#d8d2c4;
+    --accent:#1a4a7a; --accent2:#2f6fae; --key:#ffffff; --keyline:#c9c2b2;
+    --phrase:#fffaf0; --phraseline:#e3c98a; --danger:#b23a3a;
+    --fs:1; /* フォント倍率 */
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; height:100%; overflow:hidden;}
+  body{
+    font-family:-apple-system,"Hiragino Sans","Hiragino Kaku Gothic ProN",sans-serif;
+    background:var(--bg); color:var(--ink);
+    display:flex; flex-direction:column;
+    padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    user-select:none; -webkit-user-select:none;
+  }
+  /* ===== 表示エリア ===== */
+  #display{
+    flex:0 0 auto; min-height:18vh; max-height:34vh; background:var(--panel);
+    border-bottom:3px solid var(--line); padding:14px 16px;
+    display:flex; align-items:center; overflow:hidden;
+  }
+  #text{
+    flex:1 1 auto; min-width:0; overflow-y:auto; max-height:30vh;
+    font-size:calc(2.6rem * var(--fs)); line-height:1.25; font-weight:700;
+    word-break:break-all; min-height:1.2em; color:var(--ink);
+  }
+  #text.placeholder{color:#9c958a; font-weight:500; font-size:calc(1.5rem * var(--fs));}
+  #displayBtns{display:flex; flex-direction:column; gap:8px; margin-left:12px;}
+  .ctrl{
+    font-size:calc(1.05rem * var(--fs)); font-weight:700; border:none; border-radius:14px;
+    padding:12px 14px; color:#fff; min-width:78px; line-height:1.15;
+  }
+  .ctrl.speak{background:var(--accent); font-size:calc(1.25rem * var(--fs)); padding:16px 14px;}
+  .ctrl.back{background:#8a8170;}
+  .ctrl.clear{background:#b6ab92;}
+  .ctrl:active{filter:brightness(.9);}
+
+  /* ===== タブ ===== */
+  #tabs{flex:0 0 auto; display:flex; gap:6px; padding:8px 8px 0; background:var(--bg); overflow-x:auto;}
+  .tab{
+    flex:0 0 auto; font-size:calc(1.05rem * var(--fs)); font-weight:700; border:2px solid var(--line);
+    background:#ece7db; color:#5d5647; border-radius:14px 14px 0 0; padding:12px 16px;
+  }
+  .tab.active{background:var(--panel); color:var(--accent); border-color:var(--line); border-bottom-color:var(--panel);}
+
+  /* ===== メイン領域 ===== */
+  #main{flex:1 1 auto; overflow-y:auto; background:var(--panel); padding:10px;}
+
+  /* 50音 */
+  #kana{display:grid; grid-template-columns:repeat(10,1fr); gap:6px;}
+  .cell{
+    aspect-ratio:1/1; display:flex; align-items:center; justify-content:center;
+    font-size:calc(1.7rem * var(--fs)); font-weight:700; border-radius:12px;
+    background:var(--key); border:2px solid var(--keyline); color:var(--ink);
+  }
+  .cell.blank{background:transparent; border:none;}
+  .cell:not(.blank):active{background:var(--accent2); color:#fff;}
+  #kanaUtil{display:grid; grid-template-columns:repeat(5,1fr); gap:6px; margin-top:6px;}
+  .util{
+    font-size:calc(1.3rem * var(--fs)); font-weight:700; padding:14px 0; border-radius:12px;
+    background:#eef2f6; border:2px solid #c5d2dd; color:var(--accent);
+  }
+  .util:active{background:var(--accent2); color:#fff;}
+
+  /* 定型文 */
+  #phrases{display:grid; grid-template-columns:repeat(2,1fr); gap:10px;}
+  .phrase{
+    min-height:calc(72px * var(--fs)); display:flex; align-items:center; justify-content:center;
+    text-align:center; font-size:calc(1.5rem * var(--fs)); font-weight:700; padding:10px 12px;
+    background:var(--phrase); border:2px solid var(--phraseline); border-radius:16px; color:var(--ink);
+    position:relative;
+  }
+  .phrase:active{background:#ffe9bf;}
+  .phrase .edit-badge{
+    position:absolute; top:-8px; right:-8px; width:28px; height:28px; border-radius:50%;
+    background:var(--accent); color:#fff; font-size:1rem; display:none; align-items:center; justify-content:center;
+  }
+  body.editing .phrase .edit-badge{display:flex;}
+  body.editing .phrase{border-style:dashed;}
+  .addphrase{
+    min-height:calc(72px * var(--fs)); display:none; align-items:center; justify-content:center;
+    font-size:calc(1.4rem * var(--fs)); font-weight:700; color:var(--accent);
+    background:#eef2f6; border:2px dashed var(--accent2); border-radius:16px;
+  }
+  body.editing .addphrase{display:flex;}
+
+  /* ===== フッター ===== */
+  #footer{flex:0 0 auto; display:flex; gap:8px; padding:8px; background:var(--bg); border-top:2px solid var(--line);}
+  .fbtn{flex:1; font-size:calc(1rem * var(--fs)); font-weight:700; padding:12px 6px; border-radius:12px; border:2px solid var(--line); background:#ece7db; color:#5d5647;}
+  .fbtn.on{background:var(--accent); color:#fff; border-color:var(--accent);}
+  #fontBtns{display:flex; gap:6px; flex:1;}
+  #fontBtns .fbtn{flex:1;}
+
+  /* ===== モーダル ===== */
+  #modal{position:fixed; inset:0; background:rgba(0,0,0,.45); display:none; align-items:center; justify-content:center; padding:20px; z-index:50;}
+  #modal.show{display:flex;}
+  .sheet{background:#fff; border-radius:20px; width:100%; max-width:480px; padding:22px;}
+  .sheet h2{margin:0 0 14px; font-size:1.3rem;}
+  .sheet textarea{width:100%; font-size:1.5rem; font-weight:700; padding:12px; border:2px solid var(--line); border-radius:12px; min-height:90px; font-family:inherit;}
+  .sheet-btns{display:flex; gap:10px; margin-top:16px;}
+  .sheet-btns button{flex:1; font-size:1.15rem; font-weight:700; padding:14px; border-radius:14px; border:none; color:#fff;}
+  .sb-ok{background:var(--accent);}
+  .sb-cancel{background:#9c958a;}
+  .sb-del{background:var(--danger);}
+</style>
+</head>
+<body>
+
+<div id="display">
+  <div id="text" class="placeholder">ここに ことばが でます</div>
+  <div id="displayBtns">
+    <button class="ctrl speak" id="btnSpeak">🔊 よみあげ</button>
+    <button class="ctrl back" id="btnBack">⌫ けす</button>
+    <button class="ctrl clear" id="btnClear">ぜんぶ消す</button>
+  </div>
+</div>
+
+<div id="tabs"></div>
+
+<div id="main"></div>
+
+<div id="footer">
+  <button class="fbtn" id="btnEdit">✏️ ことばを編集</button>
+  <div id="fontBtns">
+    <button class="fbtn" data-fs="0.85">文字 小</button>
+    <button class="fbtn" data-fs="1" >中</button>
+    <button class="fbtn" data-fs="1.2">大</button>
+  </div>
+</div>
+
+<div id="modal">
+  <div class="sheet">
+    <h2 id="modalTitle">ことばを編集</h2>
+    <textarea id="modalInput" rows="2"></textarea>
+    <div class="sheet-btns" id="modalBtns"></div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
