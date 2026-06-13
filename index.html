@@ -61,8 +61,8 @@
   /* 50音 — 画面いっぱいに広げてキーを大きく押しやすく */
   #kana{display:grid; grid-template-columns:repeat(10,1fr); gap:5px;}
   .cell{
-    display:flex; align-items:center; justify-content:center; min-height:48px;
-    font-size:min(7.8vw,40px); font-weight:700; border-radius:10px;
+    display:flex; align-items:center; justify-content:center; min-height:0;
+    font-size:min(7.8vw,7vh,40px); font-weight:700; border-radius:10px;
     background:var(--key); border:2px solid var(--keyline); color:var(--ink);
   }
   .cell.blank{background:transparent; border:none; min-height:0;}
@@ -78,8 +78,18 @@
   body.kana-mode #display{min-height:0; max-height:20vh; padding:10px 12px;}
   body.kana-mode #footer{display:none;}
   body.kana-mode #main{display:flex; flex-direction:column; overflow:hidden; padding:6px; gap:5px;}
-  body.kana-mode #kana{flex:1 1 auto; grid-auto-rows:1fr;}
+  body.kana-mode #kana{flex:1 1 auto; grid-auto-rows:1fr; min-height:0;}
   body.kana-mode #kanaUtil{flex:0 0 auto; margin-top:0;}
+
+  /* 横向き(landscape): 高さが狭いので操作ボタンを横並びに・機能キーを1段に・表示を詰める */
+  @media (orientation:landscape){
+    body.kana-mode #display{max-height:30vh;}
+    body.kana-mode #displayBtns{flex-direction:row; margin-left:10px;}
+    body.kana-mode .ctrl{padding:9px 12px; min-width:64px; font-size:calc(1rem * var(--fs));}
+    body.kana-mode .ctrl.speak{padding:9px 12px; font-size:calc(1.05rem * var(--fs));}
+    body.kana-mode #kanaUtil{grid-template-columns:repeat(10,1fr);}
+    .util{font-size:min(3.4vw,15px); padding:7px 0;}
+  }
 
   /* 定型文 */
   #phrases{display:grid; grid-template-columns:repeat(2,1fr); gap:10px;}
