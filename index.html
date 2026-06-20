@@ -96,6 +96,13 @@
   .board-h{font-size:1rem; font-weight:800; color:var(--accent); padding:4px 2px 5px;}
   .board-grid{display:grid; gap:5px;}
   .board-grid .cell{min-height:56px; font-size:min(6.2vw,30px);}
+  /* 列ごとに交互の色でグルーピング（紙の文字盤に合わせる） */
+  .board-grid.theme-daku  .c-tint{background:#fbe2c2; border-color:#dca860;}   /* 濁音=暖色 */
+  .board-grid.theme-daku  .c-plain{background:#fffdf7; border-color:#e7cfa1;}
+  .board-grid.theme-youon .c-tint{background:#d9ecc3; border-color:#9cc163;}   /* 拗音=緑 */
+  .board-grid.theme-youon .c-plain{background:#f6fbef; border-color:#bfd99c;}
+  .board-grid.theme-kogaki .c-tint{background:#e7edf3; border-color:#bcc7d3;}  /* 小書き=灰 */
+  .board-grid.theme-kogaki .c-plain{background:#fbfcfd; border-color:#d3dbe3;}
 
   /* 横向き(landscape): 高さが狭いので表示と操作ボタンを左右に分け、ボタンは縦並びに */
   @media (orientation:landscape){

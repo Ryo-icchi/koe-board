@@ -99,17 +99,17 @@ const DAKUON_ROWS = [
   ["ぺ","べ","で","ぜ","げ"],
   ["ぽ","ぼ","ど","ぞ","ご"]
 ];
-// 拗音 前半: 列=き ぎ し じ ち ぢ、段=ゃゅょ
+// 拗音 前半: 紙の文字盤と同じ並び（右から き ぎ し じ ち ぢ）、段=ゃゅょ
 const YOUON_A = [
-  ["きゃ","ぎゃ","しゃ","じゃ","ちゃ","ぢゃ"],
-  ["きゅ","ぎゅ","しゅ","じゅ","ちゅ","ぢゅ"],
-  ["きょ","ぎょ","しょ","じょ","ちょ","ぢょ"]
+  ["ぢゃ","ちゃ","じゃ","しゃ","ぎゃ","きゃ"],
+  ["ぢゅ","ちゅ","じゅ","しゅ","ぎゅ","きゅ"],
+  ["ぢょ","ちょ","じょ","しょ","ぎょ","きょ"]
 ];
-// 拗音 後半: 列=に ひ び ぴ み り、段=ゃゅょ
+// 拗音 後半: 紙の文字盤と同じ並び（右から に ひ び ぴ み り）、段=ゃゅょ
 const YOUON_B = [
-  ["にゃ","ひゃ","びゃ","ぴゃ","みゃ","りゃ"],
-  ["にゅ","ひゅ","びゅ","ぴゅ","みゅ","りゅ"],
-  ["にょ","ひょ","びょ","ぴょ","みょ","りょ"]
+  ["りゃ","みゃ","ぴゃ","びゃ","ひゃ","にゃ"],
+  ["りゅ","みゅ","ぴゅ","びゅ","ひゅ","にゅ"],
+  ["りょ","みょ","ぴょ","びょ","ひょ","にょ"]
 ];
 // 単体の小書き文字＋長音（っ＝小さいつ 等）
 const KOGAKI = ["ぁ","ぃ","ぅ","ぇ","ぉ","っ","ゃ","ゅ","ょ","ー"];
@@ -359,9 +359,11 @@ function toggleLast(map, rev){
   if(next){ buffer = buffer.slice(0,-1) + next; renderText(); speak(next); }
 }
 
-/* 濁音・半濁音・小さい文字ボードを描画（セクション＋スクロール） */
+/* 濁音・半濁音・小さい文字ボードを描画（セクション＋スクロール）
+   theme: 配色テーマ（daku=暖色 / youon=緑 / kogaki=灰）
+   tintEven: 列番号が偶数のときに濃い色を付けるか（紙の文字盤の配色に合わせて段ごとに調整） */
 function renderDakuBoard(){
-  const section = (title, rows, cols)=>{
+  const section = (title, rows, cols, theme, tintEven)=>{
     const sec = document.createElement("div");
     sec.className = "board-sec";
     if(title){
@@ -370,13 +372,15 @@ function renderDakuBoard(){
       sec.appendChild(h);
     }
     const g = document.createElement("div");
-    g.className = "board-grid";
+    g.className = "board-grid theme-" + theme;
     g.style.gridTemplateColumns = `repeat(${cols},1fr)`;
-    rows.flat().forEach(ch=>{
+    rows.flat().forEach((ch,i)=>{
       const c = document.createElement("div");
       if(ch === ""){ c.className = "cell blank"; }
       else{
-        c.className = "cell";
+        const col = i % cols;                       // 列番号で交互に色付け（＝五十音の行ごとにグルーピング）
+        const tinted = (col % 2 === 0) === tintEven;
+        c.className = "cell " + (tinted ? "c-tint" : "c-plain");
         c.textContent = ch;
         c.onclick = ()=>{ appendChar(ch); speak(ch); };   // 1タップで入力＋読み上げ
       }
@@ -385,10 +389,10 @@ function renderDakuBoard(){
     sec.appendChild(g);
     return sec;
   };
-  mainEl.appendChild(section("濁音・半濁音", DAKUON_ROWS, 5));
-  mainEl.appendChild(section("小さい文字（ゃ ゅ ょ）", YOUON_A, 6));
-  mainEl.appendChild(section("", YOUON_B, 6));
-  mainEl.appendChild(section("小書き・のばす", [KOGAKI], KOGAKI.length));
+  mainEl.appendChild(section("濁音・半濁音", DAKUON_ROWS, 5, "daku", true));
+  mainEl.appendChild(section("小さい文字（ゃ ゅ ょ）", YOUON_A, 6, "youon", true));
+  mainEl.appendChild(section("", YOUON_B, 6, "youon", false));
+  mainEl.appendChild(section("小書き・のばす", [KOGAKI], KOGAKI.length, "kogaki", true));
 }
 
 function renderPhrases(cat){

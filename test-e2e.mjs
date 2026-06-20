@@ -136,7 +136,7 @@ try{
     a.dispatchEvent(new PointerEvent('pointerdown',{pointerId:1,button:0,clientX:1,clientY:1,bubbles:true}));
     window.__pt={x:rb.left+rb.width/2, y:rb.top+rb.height/2};
     return true; })()`);
-  await sleep(550); // 長押し成立を待つ
+  await sleep(750); // 長押し成立を待つ（タイマー450ms+余裕）
   await evalJs(send, `(()=>{
     const a=document.querySelectorAll('.phrase')[0];
     a.dispatchEvent(new PointerEvent('pointermove',{pointerId:1,clientX:window.__pt.x,clientY:window.__pt.y,bubbles:true}));
@@ -154,9 +154,9 @@ try{
     a.dispatchEvent(new PointerEvent('pointerdown',{pointerId:2,button:0,clientX:1,clientY:1,bubbles:true}));
     window.__ct={x:rb.left+rb.width/2, y:rb.top+rb.height/2};
     return true; })()`);
-  await sleep(550);
+  await sleep(750);
   await evalJs(send, `(()=>{
-    const a=document.querySelectorAll('.tab.cat')[0];
+    const a=document.querySelectorAll(".tab.cat")[0];
     a.dispatchEvent(new PointerEvent('pointermove',{pointerId:2,clientX:window.__ct.x,clientY:window.__ct.y,bubbles:true}));
     a.dispatchEvent(new PointerEvent('pointerup',{pointerId:2,clientX:window.__ct.x,clientY:window.__ct.y,bubbles:true}));
     return true; })()`);
