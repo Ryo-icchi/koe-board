@@ -312,17 +312,18 @@ function renderKana(){
   const grid = document.createElement("div");
   grid.id = "kana";
   KANA_ROWS.forEach(row=>{
-    row.forEach(ch=>{
+    row.forEach((ch,col)=>{
       const c = document.createElement("div");
       if(ch === ""){ c.className = "cell blank"; }
       else if(ch.indexOf("fn:") === 0){
         const f = FN_KEYS[ch];
-        c.className = "cell fn";
+        c.className = "cell fn";   // 機能キー（濁点等）は青のまま・色分け対象外
         c.dataset.fn = ch.slice(3);
         c.innerHTML = `<span class="sym">${f.sym}</span><span class="nm">${f.nm}</span>`;
         c.onclick = f.run;
       }else{
-        c.className = "cell";
+        // かな文字は列ごとに交互オレンジでグルーピング（右端「あ」列に色が付く）
+        c.className = "cell " + (col % 2 === 1 ? "c-tint" : "c-plain");
         c.textContent = ch;
         c.onclick = ()=>{ appendChar(ch); speak(ch); };   // 押した1文字を読み上げる
       }

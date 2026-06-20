@@ -103,6 +103,11 @@
   .board-grid.theme-youon .c-plain{background:#f6fbef; border-color:#bfd99c;}
   .board-grid.theme-kogaki .c-tint{background:#e7edf3; border-color:#bcc7d3;}  /* 小書き=灰 */
   .board-grid.theme-kogaki .c-plain{background:#fbfcfd; border-color:#d3dbe3;}
+  /* もじ盤（あいうえお）も列ごとに交互オレンジ */
+  #kana .c-tint{background:#fbe2c2; border-color:#dca860;}
+  #kana .c-plain{background:#fffdf7; border-color:#e7cfa1;}
+  /* タップ中は色付きセルでも確実に青く（specificity 対策で !important） */
+  #kana .cell:active, .board-grid .cell:active{background:var(--accent2)!important; color:#fff!important; border-color:var(--accent2)!important;}
 
   /* 横向き(landscape): 高さが狭いので表示と操作ボタンを左右に分け、ボタンは縦並びに */
   @media (orientation:landscape){
