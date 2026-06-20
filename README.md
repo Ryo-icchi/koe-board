@@ -55,5 +55,6 @@
 - 50音タップ・濁点トグルでその文字を読み上げる（`speak()`）
 - 並び替えは長押し（450ms）→ Pointer Events でドラッグ。`enableLongPressReorder()`。「もじ」タブは固定（`.tab.cat` のみ対象）
   - 縦ドラッグがネイティブスクロールに奪われる問題は、ドラッグ中だけ `touchmove` を `preventDefault`（`{passive:false}`）して抑止。端でリストを自動スクロールするので画面外の項目にも届く（`startDrag`）
-- 更新時は `sw.js` の `CACHE` バージョンを必ず上げる（cache-first のため／上げないと旧ファイルが配信され続ける）
+- Service Worker は **HTML と app.js（コード）= ネットワーク優先 / アイコン等 = キャッシュ優先**のハイブリッド。iOSホーム画面PWAは純 cache-first だと更新が永久に届かないため（resume≠reload・「次々回起動」問題）。これによりオンラインなら1回の起動で最新が届く
+- 更新時は `sw.js` の `CACHE` バージョンも上げる（旧キャッシュ削除のトリガー）
 - E2E テスト: `node test-e2e.mjs`（ヘッドレス Chrome / CDP・並び替え含む全項目）
