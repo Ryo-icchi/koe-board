@@ -70,11 +70,13 @@ try{
   await evalJs(send, `[...document.querySelectorAll('#kana .cell')].find(c=>c.textContent==='か').click(); true`);
   check("50音: 「あか」と入力される", (await evalJs(send, `document.querySelector('#text').textContent`)) === "あか");
 
-  // 3. 濁点
-  await evalJs(send, `[...document.querySelectorAll('.util')].find(b=>b.textContent.includes('濁点')).click(); true`);
+  // 3. 濁点（盤に埋め込まれた機能キー）
+  check("濁点: 盤の機能キーとして存在", await evalJs(send, `!!document.querySelector('#kana .cell.fn[data-fn="dakuten"]')`));
+  check("半濁: 盤の機能キーとして存在", await evalJs(send, `!!document.querySelector('#kana .cell.fn[data-fn="handakuten"]')`));
+  await evalJs(send, `document.querySelector('#kana .cell.fn[data-fn="dakuten"]').click(); true`);
   check("濁点: 「あが」になる", (await evalJs(send, `document.querySelector('#text').textContent`)) === "あが");
   // もう一度押すと外れる
-  await evalJs(send, `[...document.querySelectorAll('.util')].find(b=>b.textContent.includes('濁点')).click(); true`);
+  await evalJs(send, `document.querySelector('#kana .cell.fn[data-fn="dakuten"]').click(); true`);
   check("濁点: 再押下で「あか」に戻る", (await evalJs(send, `document.querySelector('#text').textContent`)) === "あか");
 
   // 4. ⌫ / 全消し
@@ -110,6 +112,44 @@ try{
   await evalJs(send, `[...document.querySelectorAll('.tab')].find(t=>t.textContent.includes('きほん')).click(); true`);
   await sleep(150);
   check("永続: リロード後も追加語が残る", await evalJs(send, `[...document.querySelectorAll('.phrase span')].some(s=>s.textContent==='テスト追加語')`));
+
+  // 7.5 並べ替え: 定型文を長押しドラッグで先頭2件を入れ替え（きほんタブ表示中）
+  // ※ .phrase 内には本文spanと編集バッジspanがあるため、本文(最初のspan)だけを読む
+  const pOrder0 = await evalJs(send, `JSON.stringify([...document.querySelectorAll('.phrase')].map(p=>p.querySelector('span').textContent))`);
+  await evalJs(send, `(()=>{
+    const it=[...document.querySelectorAll('.phrase')]; const a=it[0], b=it[1];
+    const rb=b.getBoundingClientRect();
+    a.dispatchEvent(new PointerEvent('pointerdown',{pointerId:1,button:0,clientX:1,clientY:1,bubbles:true}));
+    window.__pt={x:rb.left+rb.width/2, y:rb.top+rb.height/2};
+    return true; })()`);
+  await sleep(550); // 長押し成立を待つ
+  await evalJs(send, `(()=>{
+    const a=document.querySelectorAll('.phrase')[0];
+    a.dispatchEvent(new PointerEvent('pointermove',{pointerId:1,clientX:window.__pt.x,clientY:window.__pt.y,bubbles:true}));
+    a.dispatchEvent(new PointerEvent('pointerup',{pointerId:1,clientX:window.__pt.x,clientY:window.__pt.y,bubbles:true}));
+    return true; })()`);
+  await sleep(150);
+  check("並べ替え: 定型文の先頭2件が入れ替わる", await evalJs(send, `(()=>{const o=JSON.parse(${JSON.stringify(pOrder0)});const n=[...document.querySelectorAll('.phrase')].map(p=>p.querySelector('span').textContent);return n[0]===o[1]&&n[1]===o[0];})()`));
+  check("並べ替え: 定型文順がlocalStorageに保存", await evalJs(send, `(()=>{const n=[...document.querySelectorAll('.phrase')].map(p=>p.querySelector('span').textContent);const s=JSON.parse(localStorage.getItem('koe.phrases.v1'))['きほん'];return s[0]===n[0]&&s[1]===n[1];})()`));
+
+  // 7.6 並べ替え: カテゴリ(タブ)を長押しドラッグで先頭2件を入れ替え
+  const cOrder0 = await evalJs(send, `JSON.stringify([...document.querySelectorAll('.tab.cat')].map(t=>t.dataset.cat))`);
+  await evalJs(send, `(()=>{
+    const t=[...document.querySelectorAll('.tab.cat')]; const a=t[0], b=t[1];
+    const rb=b.getBoundingClientRect();
+    a.dispatchEvent(new PointerEvent('pointerdown',{pointerId:2,button:0,clientX:1,clientY:1,bubbles:true}));
+    window.__ct={x:rb.left+rb.width/2, y:rb.top+rb.height/2};
+    return true; })()`);
+  await sleep(550);
+  await evalJs(send, `(()=>{
+    const a=document.querySelectorAll('.tab.cat')[0];
+    a.dispatchEvent(new PointerEvent('pointermove',{pointerId:2,clientX:window.__ct.x,clientY:window.__ct.y,bubbles:true}));
+    a.dispatchEvent(new PointerEvent('pointerup',{pointerId:2,clientX:window.__ct.x,clientY:window.__ct.y,bubbles:true}));
+    return true; })()`);
+  await sleep(150);
+  check("並べ替え: カテゴリの先頭2件が入れ替わる", await evalJs(send, `(()=>{const o=JSON.parse(${JSON.stringify(cOrder0)});const n=[...document.querySelectorAll('.tab.cat')].map(t=>t.dataset.cat);return n[0]===o[1]&&n[1]===o[0];})()`));
+  check("並べ替え: もじタブは先頭のまま固定", await evalJs(send, `document.querySelector('.tab').textContent.includes('もじ')`));
+  check("並べ替え: カテゴリ順がlocalStorageに保存", await evalJs(send, `(()=>{const n=[...document.querySelectorAll('.tab.cat')].map(t=>t.dataset.cat);const k=Object.keys(JSON.parse(localStorage.getItem('koe.phrases.v1')));return k[0]===n[0]&&k[1]===n[1];})()`));
 
   // 8. フォント倍率（定型文タブ表示中＝フッター見える状態で）
   await evalJs(send, `[...document.querySelectorAll('#fontBtns .fbtn')].find(b=>b.dataset.fs==='1.2').click(); true`);

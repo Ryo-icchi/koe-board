@@ -48,14 +48,16 @@ const DEFAULT_PHRASES = {
   ]
 };
 
-/* ---------- 50音盤（紙の文字盤と同じ、あ列が右・縦に あいうえお） ---------- */
-// 段（行）ごとに 左→右で [わ ら や ま は な た さ か あ] の順に並べる
+/* ---------- 50音盤（あ列が右・縦に あいうえお） ----------
+   わ・を・ん を左列の上に詰め、空いた左下・や列下に
+   濁点／半濁／小文字／ー を「あいうえお」と同じ大きさで配置する。
+   "fn:xxx" は機能キー（後段の FN_KEYS と対応）。 */
 const KANA_ROWS = [
-  ["わ","ら","や","ま","は","な","た","さ","か","あ"], // あ段
-  ["",  "り","",  "み","ひ","に","ち","し","き","い"], // い段
-  ["を","る","ゆ","む","ふ","ぬ","つ","す","く","う"], // う段（を を ここに置く）
-  ["",  "れ","",  "め","へ","ね","て","せ","け","え"], // え段
-  ["ん","ろ","よ","も","ほ","の","と","そ","こ","お"]  // お段（ん をここに置く）
+  ["わ",          "ら","や",      "ま","は","な","た","さ","か","あ"], // あ段
+  ["を",          "り","ゆ",      "み","ひ","に","ち","し","き","い"], // い段
+  ["ん",          "る","よ",      "む","ふ","ぬ","つ","す","く","う"], // う段
+  ["fn:dakuten",  "れ","fn:small","め","へ","ね","て","せ","け","え"], // え段
+  ["fn:handakuten","ろ","fn:dash","も","ほ","の","と","そ","こ","お"]  // お段
 ];
 
 // 濁点・半濁点・小書き 変換マップ
@@ -76,6 +78,14 @@ const REV_DAKUTEN = invert(DAKUTEN);
 const REV_HANDAKUTEN = invert(HANDAKUTEN);
 const REV_SMALL = invert(SMALL);
 function invert(o){const r={};for(const k in o)r[o[k]]=k;return r;}
+
+// 盤に埋め込む機能キー（濁点・半濁・小文字・長音）
+const FN_KEYS = {
+  "fn:dakuten":    {sym:"゛", nm:"だくてん", run:()=>toggleLast(DAKUTEN, REV_DAKUTEN)},
+  "fn:handakuten": {sym:"゜", nm:"はんだく", run:()=>toggleLast(HANDAKUTEN, REV_HANDAKUTEN)},
+  "fn:small":      {sym:"小", nm:"ちいさく", run:()=>toggleLast(SMALL, REV_SMALL)},
+  "fn:dash":       {sym:"ー", nm:"のばす",   run:()=>appendChar("ー")}
+};
 
 /* ---------- 状態 ---------- */
 const LS_PHRASES = "koe.phrases.v1";
@@ -128,6 +138,82 @@ function speak(t){
   speechSynthesis.speak(u);
 }
 
+/* ---------- 長押しドラッグで並べ替え ----------
+   - 0.45秒の長押しで「移動モード」に入り、指でドラッグして並べ替える
+   - 普通のタップ（短押し）は従来通り読み上げ／タブ切替として動く
+   - 編集モードのON/OFFに関わらず使える */
+let lastReorderTs = 0;   // 直前の並べ替え完了時刻（直後のクリック誤発火を抑止）
+
+function enableLongPressReorder(container, selector, commit){
+  container.querySelectorAll(selector).forEach(el=>{
+    el.addEventListener("pointerdown", ev=>{
+      if(ev.button && ev.button !== 0) return;
+      const sx = ev.clientX, sy = ev.clientY, pid = ev.pointerId;
+      const cancel = ()=>{
+        clearTimeout(timer);
+        el.removeEventListener("pointermove", premove);
+        el.removeEventListener("pointerup", preup);
+        el.removeEventListener("pointercancel", preup);
+      };
+      const premove = e=>{ if(Math.hypot(e.clientX-sx, e.clientY-sy) > 14) cancel(); };
+      const preup = ()=>cancel();
+      el.addEventListener("pointermove", premove);
+      el.addEventListener("pointerup", preup);
+      el.addEventListener("pointercancel", preup);
+      const timer = setTimeout(()=>{ cancel(); startDrag(el, container, selector, commit, pid); }, 450);
+    });
+  });
+}
+
+function startDrag(el, container, selector, commit, pid){
+  el.classList.add("dragging");
+  try{ navigator.vibrate && navigator.vibrate(15); }catch(e){}
+  try{ el.setPointerCapture(pid); }catch(e){}
+  const onMove = e=>{
+    e.preventDefault();
+    const prevPE = el.style.pointerEvents; el.style.pointerEvents = "none";
+    const t = document.elementFromPoint(e.clientX, e.clientY);
+    el.style.pointerEvents = prevPE;
+    const over = t && t.closest(selector);
+    if(over && over !== el && over.parentNode === container){
+      const items = [...container.children].filter(n=>n.matches && n.matches(selector));
+      // 移動方向に応じて前 or 後ろに差し込む（縦リストでも2列グリッドでも横タブでも自然に動く）
+      if(items.indexOf(el) < items.indexOf(over)) container.insertBefore(el, over.nextSibling);
+      else container.insertBefore(el, over);
+    }
+  };
+  const onUp = ()=>{
+    el.classList.remove("dragging");
+    try{ el.releasePointerCapture(pid); }catch(e){}
+    el.removeEventListener("pointermove", onMove);
+    el.removeEventListener("pointerup", onUp);
+    el.removeEventListener("pointercancel", onUp);
+    lastReorderTs = Date.now();
+    commit();
+  };
+  el.addEventListener("pointermove", onMove);
+  el.addEventListener("pointerup", onUp);
+  el.addEventListener("pointercancel", onUp);
+}
+
+function commitPhraseOrder(cat, container){
+  const order = [...container.querySelectorAll(".phrase")].map(el=>parseInt(el.dataset.idx, 10));
+  const arr = phrases[cat] || [];
+  phrases[cat] = order.map(i=>arr[i]).filter(v=>v !== undefined);
+  savePhrases();
+  renderMain();
+}
+
+function commitCategoryOrder(){
+  const order = [...tabsEl.querySelectorAll(".tab.cat")].map(el=>el.dataset.cat);
+  const next = {};
+  order.forEach(c=>{ if(phrases[c]) next[c] = phrases[c]; });
+  Object.keys(phrases).forEach(c=>{ if(!(c in next)) next[c] = phrases[c]; }); // 漏れ保全
+  phrases = next;
+  savePhrases();
+  renderTabs(); renderMain();
+}
+
 /* ---------- タブ描画 ---------- */
 function renderTabs(){
   tabsEl.innerHTML = "";
@@ -140,11 +226,17 @@ function renderTabs(){
   // 定型文カテゴリ
   Object.keys(phrases).forEach(cat=>{
     const b = document.createElement("button");
-    b.className = "tab" + (activeTab===cat?" active":"");
+    b.className = "tab cat" + (activeTab===cat?" active":"");
+    b.dataset.cat = cat;
     b.textContent = cat;
-    b.onclick = ()=>{ activeTab = cat; renderTabs(); renderMain(); };
+    b.onclick = ()=>{
+      if(Date.now() - lastReorderTs < 300) return;   // 並べ替え直後の誤タップ抑止
+      activeTab = cat; renderTabs(); renderMain();
+    };
     tabsEl.appendChild(b);
   });
+  // カテゴリタブを長押しドラッグで並べ替え可能に（もじタブは固定）
+  enableLongPressReorder(tabsEl, ".tab.cat", commitCategoryOrder);
 }
 
 /* ---------- メイン描画 ---------- */
@@ -162,30 +254,31 @@ function renderKana(){
     row.forEach(ch=>{
       const c = document.createElement("div");
       if(ch === ""){ c.className = "cell blank"; }
-      else{
+      else if(ch.indexOf("fn:") === 0){
+        const f = FN_KEYS[ch];
+        c.className = "cell fn";
+        c.dataset.fn = ch.slice(3);
+        c.innerHTML = `<span class="sym">${f.sym}</span><span class="nm">${f.nm}</span>`;
+        c.onclick = f.run;
+      }else{
         c.className = "cell";
         c.textContent = ch;
-        c.onclick = ()=>appendChar(ch);
+        c.onclick = ()=>{ appendChar(ch); speak(ch); };   // 押した1文字を読み上げる
       }
       grid.appendChild(c);
     });
   });
   mainEl.appendChild(grid);
 
-  // 機能キー
+  // 機能キー（句読点・空白）— 濁点/半濁/小/ー は盤に移動済み
   const util = document.createElement("div");
   util.id = "kanaUtil";
   const utils = [
-    ["゛ 濁点", ()=>toggleLast(DAKUTEN, REV_DAKUTEN)],
-    ["゜ 半濁", ()=>toggleLast(HANDAKUTEN, REV_HANDAKUTEN)],
-    ["小 文字", ()=>toggleLast(SMALL, REV_SMALL)],
-    ["ー", ()=>appendChar("ー")],
     ["、", ()=>appendChar("、")],
     ["。", ()=>appendChar("。")],
     ["？", ()=>appendChar("？")],
     ["！", ()=>appendChar("！")],
-    ["␣ 空白", ()=>appendChar("　")],
-    ["🔊 読む", ()=>speak(buffer)]
+    ["␣ 空白", ()=>appendChar("　")]
   ];
   utils.forEach(([label,fn])=>{
     const b = document.createElement("button");
@@ -202,17 +295,25 @@ function toggleLast(map, rev){
   let next = null;
   if(map[last]) next = map[last];        // 付ける
   else if(rev[last]) next = rev[last];   // 既に付いていたら外す
-  if(next){ buffer = buffer.slice(0,-1) + next; renderText(); }
+  if(next){ buffer = buffer.slice(0,-1) + next; renderText(); speak(next); }
 }
 
 function renderPhrases(cat){
+  // 並べ替えの案内
+  const hint = document.createElement("div");
+  hint.className = "reorder-hint";
+  hint.textContent = "長押しで ことば・タブ を並べ替えできます";
+  mainEl.appendChild(hint);
+
   const wrap = document.createElement("div");
   wrap.id = "phrases";
   (phrases[cat]||[]).forEach((p,idx)=>{
     const b = document.createElement("button");
     b.className = "phrase";
+    b.dataset.idx = idx;
     b.innerHTML = `<span>${escapeHtml(p)}</span><span class="edit-badge">✎</span>`;
     b.onclick = ()=>{
+      if(Date.now() - lastReorderTs < 300) return;   // 並べ替え直後の誤タップ抑止
       if(editing){ openEditPhrase(cat, idx); }
       else{ buffer = p; renderText(); speak(p); }
     };
@@ -224,6 +325,9 @@ function renderPhrases(cat){
   add.onclick = ()=>openAddPhrase(cat);
   wrap.appendChild(add);
   mainEl.appendChild(wrap);
+
+  // 定型文を長押しドラッグで並べ替え可能に
+  enableLongPressReorder(wrap, ".phrase", ()=>commitPhraseOrder(cat, wrap));
 }
 
 function escapeHtml(s){return s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
