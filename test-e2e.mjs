@@ -79,6 +79,20 @@ try{
   await evalJs(send, `document.querySelector('#kana .cell.fn[data-fn="dakuten"]').click(); true`);
   check("濁点: 再押下で「あか」に戻る", (await evalJs(send, `document.querySelector('#text').textContent`)) === "あか");
 
+  // 3.5 濁音・小文字ボード（新カテゴリ）
+  await evalJs(send, `document.querySelector('#btnClear').click(); true`);
+  check("濁音ボード: タブが存在", await evalJs(send, `[...document.querySelectorAll('.tab')].some(t=>t.textContent.includes('濁音'))`));
+  await evalJs(send, `[...document.querySelectorAll('.tab')].find(t=>t.textContent.includes('濁音')).click(); true`);
+  await sleep(120);
+  check("濁音ボード: body.daku-mode が付く", await evalJs(send, `document.body.classList.contains('daku-mode')`));
+  check("濁音ボード: もじ盤(#kana)は出ない", await evalJs(send, `!document.querySelector('#kana')`));
+  check("濁音ボード: セクションが3つ以上", await evalJs(send, `document.querySelectorAll('.board-sec').length >= 3`));
+  check("濁音ボード: 「ぱ」が直接入力できる", await (async()=>{ await evalJs(send, `[...document.querySelectorAll('.board-grid .cell')].find(c=>c.textContent==='ぱ').click(); true`); return (await evalJs(send, `document.querySelector('#text').textContent`)) === "ぱ"; })());
+  check("濁音ボード: 拗音「きゃ」が1タップ入力できる", await (async()=>{ await evalJs(send, `[...document.querySelectorAll('.board-grid .cell')].find(c=>c.textContent==='きゃ').click(); true`); return (await evalJs(send, `document.querySelector('#text').textContent`)) === "ぱきゃ"; })());
+  check("濁音ボード: もじ盤に戻れる", await (async()=>{ await evalJs(send, `[...document.querySelectorAll('.tab')].find(t=>t.textContent.includes('もじ')).click(); document.querySelector('#btnClear').click(); true`); return await evalJs(send, `!!document.querySelector('#kana') && !document.body.classList.contains('daku-mode')`); })());
+  // 入力欄をリセットして従来テストへ
+  await evalJs(send, `[...document.querySelectorAll('#kana .cell')].find(c=>c.textContent==='あ').click(); [...document.querySelectorAll('#kana .cell')].find(c=>c.textContent==='か').click(); true`);
+
   // 4. ⌫ / 全消し
   await evalJs(send, `document.querySelector('#btnBack').click(); true`);
   check("けす: 「あ」になる", (await evalJs(send, `document.querySelector('#text').textContent`)) === "あ");

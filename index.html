@@ -79,25 +79,32 @@
   }
   .util:active{background:var(--accent2); color:#fff;}
 
-  /* もじタブ表示時: 表示を上に、操作ボタンを大きく横一列に置き、キーで画面を埋める */
-  body.kana-mode #display{flex-direction:column; align-items:stretch; min-height:0; max-height:34vh; padding:8px 10px; gap:8px;}
-  body.kana-mode #text{max-height:16vh;}
-  body.kana-mode #displayBtns{flex-direction:row; margin-left:0; gap:8px;}
-  body.kana-mode #displayBtns .ctrl{flex:1 1 0; min-width:0; line-height:1.1; padding:14px 4px; font-size:calc(1.2rem * var(--fs));}
-  body.kana-mode #displayBtns .ctrl.speak{font-size:calc(1.4rem * var(--fs)); padding:14px 4px;}
-  body.kana-mode #footer{display:none;}
+  /* もじ／濁音ボード表示時: 表示を上に、操作ボタンを大きく横一列に置く */
+  body.kana-mode #display, body.daku-mode #display{flex-direction:column; align-items:stretch; min-height:0; max-height:34vh; padding:8px 10px; gap:8px;}
+  body.kana-mode #text, body.daku-mode #text{max-height:16vh;}
+  body.kana-mode #displayBtns, body.daku-mode #displayBtns{flex-direction:row; margin-left:0; gap:8px;}
+  body.kana-mode #displayBtns .ctrl, body.daku-mode #displayBtns .ctrl{flex:1 1 0; min-width:0; line-height:1.1; padding:14px 4px; font-size:calc(1.2rem * var(--fs));}
+  body.kana-mode #displayBtns .ctrl.speak, body.daku-mode #displayBtns .ctrl.speak{font-size:calc(1.4rem * var(--fs)); padding:14px 4px;}
+  body.kana-mode #footer, body.daku-mode #footer{display:none;}
+  /* もじ盤は画面いっぱいに埋める */
   body.kana-mode #main{display:flex; flex-direction:column; overflow:hidden; padding:6px; gap:5px;}
   body.kana-mode #kana{flex:1 1 auto; grid-auto-rows:1fr; min-height:0;}
   body.kana-mode #kanaUtil{flex:0 0 auto; margin-top:0;}
+  /* 濁音ボードは段数が多いので縦スクロール */
+  body.daku-mode #main{padding:6px 8px;}
+  .board-sec{margin-bottom:12px;}
+  .board-h{font-size:1rem; font-weight:800; color:var(--accent); padding:4px 2px 5px;}
+  .board-grid{display:grid; gap:5px;}
+  .board-grid .cell{min-height:56px; font-size:min(6.2vw,30px);}
 
   /* 横向き(landscape): 高さが狭いので表示と操作ボタンを左右に分け、ボタンは縦並びに */
   @media (orientation:landscape){
-    body.kana-mode #display{flex-direction:row; align-items:center; max-height:38vh;}
-    body.kana-mode #text{max-height:32vh;}
-    body.kana-mode #displayBtns{flex-direction:column; margin-left:10px; gap:6px;}
-    body.kana-mode #displayBtns .ctrl{flex:0 0 auto;}
-    body.kana-mode .ctrl{padding:11px 14px; min-width:104px; font-size:calc(1.2rem * var(--fs));}
-    body.kana-mode .ctrl.speak{padding:13px 14px; font-size:calc(1.45rem * var(--fs));}
+    body.kana-mode #display, body.daku-mode #display{flex-direction:row; align-items:center; max-height:38vh;}
+    body.kana-mode #text, body.daku-mode #text{max-height:32vh;}
+    body.kana-mode #displayBtns, body.daku-mode #displayBtns{flex-direction:column; margin-left:10px; gap:6px;}
+    body.kana-mode #displayBtns .ctrl, body.daku-mode #displayBtns .ctrl{flex:0 0 auto;}
+    body.kana-mode .ctrl, body.daku-mode .ctrl{padding:11px 14px; min-width:104px; font-size:calc(1.2rem * var(--fs));}
+    body.kana-mode .ctrl.speak, body.daku-mode .ctrl.speak{padding:13px 14px; font-size:calc(1.45rem * var(--fs));}
     .util{font-size:min(3.4vw,15px); padding:7px 0;}
   }
 

@@ -87,6 +87,33 @@ const FN_KEYS = {
   "fn:dash":       {sym:"ー", nm:"のばす",   run:()=>appendChar("ー")}
 };
 
+/* ---------- 濁音・半濁音・小さい文字（拗音）ボード ----------
+   紙の文字盤の「濁音／半濁音」「小さい文字」コーナーをそのまま1タップ入力に。
+   き→や→小 のように3回押す手間をなくす。 */
+const DAKU_TAB = "濁音・半濁・小";
+// 濁音＋半濁音: 列=が ざ だ ば ぱ、段=あいうえお（5列×5段）
+const DAKUON_ROWS = [
+  ["が","ざ","だ","ば","ぱ"],
+  ["ぎ","じ","ぢ","び","ぴ"],
+  ["ぐ","ず","づ","ぶ","ぷ"],
+  ["げ","ぜ","で","べ","ぺ"],
+  ["ご","ぞ","ど","ぼ","ぽ"]
+];
+// 拗音 前半: 列=き ぎ し じ ち ぢ、段=ゃゅょ
+const YOUON_A = [
+  ["きゃ","ぎゃ","しゃ","じゃ","ちゃ","ぢゃ"],
+  ["きゅ","ぎゅ","しゅ","じゅ","ちゅ","ぢゅ"],
+  ["きょ","ぎょ","しょ","じょ","ちょ","ぢょ"]
+];
+// 拗音 後半: 列=に ひ び ぴ み り、段=ゃゅょ
+const YOUON_B = [
+  ["にゃ","ひゃ","びゃ","ぴゃ","みゃ","りゃ"],
+  ["にゅ","ひゅ","びゅ","ぴゅ","みゅ","りゅ"],
+  ["にょ","ひょ","びょ","ぴょ","みょ","りょ"]
+];
+// 単体の小書き文字＋長音（っ＝小さいつ 等）
+const KOGAKI = ["ぁ","ぃ","ぅ","ぇ","ぉ","っ","ゃ","ゅ","ょ","ー"];
+
 /* ---------- 状態 ---------- */
 const LS_PHRASES = "koe.phrases.v1";
 const LS_FS = "koe.fontscale.v1";
@@ -223,6 +250,12 @@ function renderTabs(){
   kb.textContent = "🔤 もじ";
   kb.onclick = ()=>{ activeTab="もじ"; renderTabs(); renderMain(); };
   tabsEl.appendChild(kb);
+  // 濁音・半濁音・小さい文字ボード（もじと同じ固定ボードタブ。並べ替え対象外）
+  const dk = document.createElement("button");
+  dk.className = "tab" + (activeTab===DAKU_TAB?" active":"");
+  dk.textContent = DAKU_TAB;
+  dk.onclick = ()=>{ activeTab=DAKU_TAB; renderTabs(); renderMain(); };
+  tabsEl.appendChild(dk);
   // 定型文カテゴリ
   Object.keys(phrases).forEach(cat=>{
     const b = document.createElement("button");
@@ -243,7 +276,9 @@ function renderTabs(){
 function renderMain(){
   mainEl.innerHTML = "";
   document.body.classList.toggle("kana-mode", activeTab === "もじ");
+  document.body.classList.toggle("daku-mode", activeTab === DAKU_TAB);
   if(activeTab === "もじ"){ renderKana(); }
+  else if(activeTab === DAKU_TAB){ renderDakuBoard(); }
   else { renderPhrases(activeTab); }
 }
 
@@ -296,6 +331,38 @@ function toggleLast(map, rev){
   if(map[last]) next = map[last];        // 付ける
   else if(rev[last]) next = rev[last];   // 既に付いていたら外す
   if(next){ buffer = buffer.slice(0,-1) + next; renderText(); speak(next); }
+}
+
+/* 濁音・半濁音・小さい文字ボードを描画（セクション＋スクロール） */
+function renderDakuBoard(){
+  const section = (title, rows, cols)=>{
+    const sec = document.createElement("div");
+    sec.className = "board-sec";
+    if(title){
+      const h = document.createElement("div");
+      h.className = "board-h"; h.textContent = title;
+      sec.appendChild(h);
+    }
+    const g = document.createElement("div");
+    g.className = "board-grid";
+    g.style.gridTemplateColumns = `repeat(${cols},1fr)`;
+    rows.flat().forEach(ch=>{
+      const c = document.createElement("div");
+      if(ch === ""){ c.className = "cell blank"; }
+      else{
+        c.className = "cell";
+        c.textContent = ch;
+        c.onclick = ()=>{ appendChar(ch); speak(ch); };   // 1タップで入力＋読み上げ
+      }
+      g.appendChild(c);
+    });
+    sec.appendChild(g);
+    return sec;
+  };
+  mainEl.appendChild(section("濁音・半濁音", DAKUON_ROWS, 5));
+  mainEl.appendChild(section("小さい文字（ゃ ゅ ょ）", YOUON_A, 6));
+  mainEl.appendChild(section("", YOUON_B, 6));
+  mainEl.appendChild(section("小書き・のばす", [KOGAKI], KOGAKI.length));
 }
 
 function renderPhrases(cat){
@@ -407,7 +474,7 @@ $("#btnEdit").onclick = ()=>{
   $("#btnEdit").classList.toggle("on", editing);
   $("#btnEdit").textContent = editing ? "✓ 編集おわり" : "✏️ ことばを編集";
   // 編集中はもじタブだと編集対象がないので定型文タブへ
-  if(editing && activeTab==="もじ"){ activeTab = Object.keys(phrases)[0]; renderTabs(); }
+  if(editing && (activeTab==="もじ" || activeTab===DAKU_TAB)){ activeTab = Object.keys(phrases)[0]; renderTabs(); }
   renderMain();
 };
 document.querySelectorAll("#fontBtns .fbtn").forEach(b=>{
