@@ -196,8 +196,32 @@ function startDrag(el, container, selector, commit, pid){
   el.classList.add("dragging");
   try{ navigator.vibrate && navigator.vibrate(15); }catch(e){}
   try{ el.setPointerCapture(pid); }catch(e){}
+
+  // ★ドラッグ中だけネイティブのスクロールを止める（縦ドラッグがスクロールに奪われるのを防ぐ）
+  //   touch-action は touchstart 時点で確定するため、長押し成立後に非passiveの touchmove で抑止する
+  const blockScroll = e=>{ e.preventDefault(); };
+  document.addEventListener("touchmove", blockScroll, {passive:false});
+
+  // ★端までドラッグしたらリストを自動スクロール（画面外の項目にも届く）
+  const scroller = el.closest("#tabs") || el.closest("#main") || mainEl;
+  const horizontal = scroller.id === "tabs";
+  const pt = {x:0, y:0};
+  const tick = ()=>{
+    const r = scroller.getBoundingClientRect(), edge = 56, step = 14;
+    if(horizontal){
+      if(pt.x && pt.x < r.left + edge) scroller.scrollLeft -= step;
+      else if(pt.x && pt.x > r.right - edge) scroller.scrollLeft += step;
+    }else if(pt.y){
+      if(pt.y < r.top + edge) scroller.scrollTop -= step;
+      else if(pt.y > r.bottom - edge) scroller.scrollTop += step;
+    }
+    raf = requestAnimationFrame(tick);
+  };
+  let raf = requestAnimationFrame(tick);
+
   const onMove = e=>{
     e.preventDefault();
+    pt.x = e.clientX; pt.y = e.clientY;
     const prevPE = el.style.pointerEvents; el.style.pointerEvents = "none";
     const t = document.elementFromPoint(e.clientX, e.clientY);
     el.style.pointerEvents = prevPE;
@@ -212,6 +236,8 @@ function startDrag(el, container, selector, commit, pid){
   const onUp = ()=>{
     el.classList.remove("dragging");
     try{ el.releasePointerCapture(pid); }catch(e){}
+    document.removeEventListener("touchmove", blockScroll, {passive:false});
+    cancelAnimationFrame(raf);
     el.removeEventListener("pointermove", onMove);
     el.removeEventListener("pointerup", onUp);
     el.removeEventListener("pointercancel", onUp);

@@ -54,5 +54,6 @@
 - 定型文は `localStorage`（キー `koe.phrases.v1`）に保存。初期値は `app.js` の `DEFAULT_PHRASES`。**並び順も同じオブジェクトのキー順／配列順で保持**するため、別キーは増やしていない（＝更新でユーザーデータは消えない。SWが消すのは `caches` のアプリ本体だけ）
 - 50音タップ・濁点トグルでその文字を読み上げる（`speak()`）
 - 並び替えは長押し（450ms）→ Pointer Events でドラッグ。`enableLongPressReorder()`。「もじ」タブは固定（`.tab.cat` のみ対象）
+  - 縦ドラッグがネイティブスクロールに奪われる問題は、ドラッグ中だけ `touchmove` を `preventDefault`（`{passive:false}`）して抑止。端でリストを自動スクロールするので画面外の項目にも届く（`startDrag`）
 - 更新時は `sw.js` の `CACHE` バージョンを必ず上げる（cache-first のため／上げないと旧ファイルが配信され続ける）
 - E2E テスト: `node test-e2e.mjs`（ヘッドレス Chrome / CDP・並び替え含む全項目）
