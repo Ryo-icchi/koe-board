@@ -3,7 +3,7 @@
      （iOSホーム画面PWAは cache-first だと更新が永久に届かないため。memory: ios-pwa-update-delivery-traps）
    - アイコン・manifest 等の静的アセットはキャッシュ優先（オフライン動作用）
    ※更新時は CACHE 名を上げる（旧キャッシュ削除のトリガー） */
-const CACHE = "koe-v14";
+const CACHE = "koe-v15";
 const ASSETS = [
   "./",
   "./index.html",

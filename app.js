@@ -502,6 +502,57 @@ function loadPhrases(){
 }
 function savePhrases(){
   try{ localStorage.setItem(LS_PHRASES, JSON.stringify(phrases)); }catch(e){}
+  idbSet(LS_PHRASES, JSON.stringify(phrases));   // IndexedDB へも常にミラー（自動保護）
+}
+
+/* ---------- 自動保護（IndexedDB ミラー） ----------
+   localStorage が OS の容量整理・誤操作等で消えても、端末内のもう一つの
+   保存領域（IndexedDB）から起動時に黙って復元する。ユーザー操作は一切不要。
+   端末に見えるファイルは何も作らない（すべてアプリ内部の保存領域）。 */
+const IDB_NAME = "koe-backup", IDB_STORE = "kv";
+function idbOpen(){
+  return new Promise((res, rej)=>{
+    const q = indexedDB.open(IDB_NAME, 1);
+    q.onupgradeneeded = ()=>q.result.createObjectStore(IDB_STORE);
+    q.onsuccess = ()=>res(q.result);
+    q.onerror = ()=>rej(q.error);
+  });
+}
+function idbSet(key, val){
+  return idbOpen().then(db=>new Promise((res, rej)=>{
+    const tx = db.transaction(IDB_STORE, "readwrite");
+    tx.objectStore(IDB_STORE).put(val, key);
+    tx.oncomplete = ()=>{ db.close(); res(); };
+    tx.onerror = ()=>rej(tx.error);
+  })).catch(()=>{});   // ミラー失敗は無視（localStorage が主・アプリ動作は止めない）
+}
+function idbGet(key){
+  return idbOpen().then(db=>new Promise((res, rej)=>{
+    const tx = db.transaction(IDB_STORE, "readonly");
+    const q = tx.objectStore(IDB_STORE).get(key);
+    q.onsuccess = ()=>{ db.close(); res(q.result); };
+    q.onerror = ()=>rej(q.error);
+  })).catch(()=>undefined);
+}
+
+// 起動時: localStorage が消えていたらミラーから自動復元。生きていればミラーを最新化
+async function restoreFromMirrorIfNeeded(){
+  let rawLS = null;
+  try{ rawLS = localStorage.getItem(LS_PHRASES); }catch(e){}
+  if(rawLS !== null){
+    idbSet(LS_PHRASES, rawLS);   // 既存ユーザーの初回起動でもここでミラーが作られる
+    return;
+  }
+  const mirrored = await idbGet(LS_PHRASES);
+  if(typeof mirrored !== "string"){ savePhrases(); return; }   // 完全な初回: 現在値を両方へ
+  try{
+    const o = JSON.parse(mirrored);
+    if(validatePhrases(o)){
+      phrases = o;
+      savePhrases();             // localStorage へ書き戻し（ミラーも同時に維持される）
+      renderTabs(); renderMain();
+    }
+  }catch(e){}
 }
 
 /* ---------- バックアップ（ことばのファイル保存・読み込み） ----------
@@ -617,6 +668,12 @@ document.querySelectorAll("#fontBtns .fbtn").forEach(b=>{
   renderText();
   renderTabs();
   renderMain();
+  // 自動保護: OS に保存領域の永続化を要求（容量整理で消される対象から外れやすくする）
+  try{
+    if(navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(()=>{});
+  }catch(e){}
+  // 自動保護: localStorage が消えていたら IndexedDB ミラーから復元
+  restoreFromMirrorIfNeeded();
   // Service Worker 登録（オフライン用）
   if("serviceWorker" in navigator){
     navigator.serviceWorker.register("sw.js").catch(()=>{});

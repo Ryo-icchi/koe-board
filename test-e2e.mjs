@@ -178,6 +178,18 @@ try{
   await sleep(120);
   check("バックアップ: 通常モードではボタン非表示", await evalJs(send, `getComputedStyle(document.querySelector('.backupbar')).display==='none'`));
 
+  // 7.8 自動保護: IndexedDB ミラー + localStorage 消失からの自動復元
+  check("自動保護: 保存時にIndexedDBへミラーされる", await evalJs(send, `(async()=>{const v=await idbGet('koe.phrases.v1');return typeof v==='string'&&v===localStorage.getItem('koe.phrases.v1');})()`));
+  // localStorage だけを消してリロード → ミラーから黙って復元されるはず
+  await evalJs(send, `localStorage.removeItem('koe.phrases.v1'); true`);
+  await send("Page.navigate", {url:`http://127.0.0.1:${PORT}/index.html`});
+  await sleep(1200);
+  check("自動保護: localStorage消失後リロードでミラーから復元", await evalJs(send, `(()=>{const raw=localStorage.getItem('koe.phrases.v1');if(!raw)return false;const s=JSON.parse(raw);return s['よみこみ確認'] && s['よみこみ確認'][0]==='テスト読込語';})()`));
+  check("自動保護: 復元後にタブも再描画される", await evalJs(send, `[...document.querySelectorAll('.tab.cat')].some(t=>t.dataset.cat==='よみこみ確認')`));
+  // フッターが見える状態（定型文タブ）に戻してから次のテストへ
+  await evalJs(send, `document.querySelector('.tab.cat').click(); true`);
+  await sleep(150);
+
   // 8. フォント倍率（定型文タブ表示中＝フッター見える状態で）
   await evalJs(send, `[...document.querySelectorAll('#fontBtns .fbtn')].find(b=>b.dataset.fs==='1.2').click(); true`);
   check("文字大: --fs が1.2", (await evalJs(send, `getComputedStyle(document.documentElement).getPropertyValue('--fs').trim()`)) === "1.2");
