@@ -141,6 +141,13 @@
     background:#eef2f6; border:2px dashed var(--accent2); border-radius:16px;
   }
   body.editing .addphrase{display:flex;}
+  /* バックアップ操作（編集モード時のみ表示） */
+  .backupbar{display:none; gap:8px; margin-top:14px;}
+  body.editing .backupbar{display:flex;}
+  .bkbtn{
+    flex:1; min-height:56px; font-size:calc(1rem * var(--fs)); font-weight:700;
+    color:var(--accent); background:#eef2f6; border:2px dashed var(--accent2); border-radius:16px;
+  }
   /* 長押しドラッグ中の見た目（ことば・タブ共通） */
   .dragging{position:relative; opacity:.92; transform:scale(1.06); box-shadow:0 10px 26px rgba(0,0,0,.28); z-index:40;}
   .reorder-hint{font-size:.85rem; color:#9c958a; text-align:center; padding:2px 0 8px; font-weight:600;}

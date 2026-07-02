@@ -424,6 +424,18 @@ function renderPhrases(cat){
   wrap.appendChild(add);
   mainEl.appendChild(wrap);
 
+  // バックアップ操作（編集モード時のみ表示・CSSで制御）
+  const bar = document.createElement("div");
+  bar.className = "backupbar";
+  const ex = document.createElement("button");
+  ex.className = "bkbtn"; ex.textContent = "💾 ことばをファイルに保存";
+  ex.onclick = exportPhrases;
+  const im = document.createElement("button");
+  im.className = "bkbtn"; im.textContent = "📂 ファイルから読み込み";
+  im.onclick = ()=>importFileEl.click();
+  bar.appendChild(ex); bar.appendChild(im);
+  mainEl.appendChild(bar);
+
   // 定型文を長押しドラッグで並べ替え可能に
   enableLongPressReorder(wrap, ".phrase", ()=>commitPhraseOrder(cat, wrap));
 }
@@ -448,7 +460,13 @@ function openModal(title, value, buttons){
   modal.classList.add("show");
   setTimeout(()=>modalInput.focus(), 50);
 }
-function closeModal(){ modal.classList.remove("show"); }
+function closeModal(){ modal.classList.remove("show"); modalInput.style.display = ""; }
+
+// 入力欄なしの確認・お知らせモーダル（openModal を再利用して入力欄だけ隠す）
+function openNotice(title, buttons){
+  openModal(title, "", buttons);
+  modalInput.style.display = "none";
+}
 
 function openAddPhrase(cat){
   openModal("ことばを追加", "", [
@@ -485,6 +503,85 @@ function loadPhrases(){
 function savePhrases(){
   try{ localStorage.setItem(LS_PHRASES, JSON.stringify(phrases)); }catch(e){}
 }
+
+/* ---------- バックアップ（ことばのファイル保存・読み込み） ----------
+   端末の故障・買い替え・localStorage 消失に備えて、定型文を JSON ファイルとして
+   保存／復元する。ボタンは編集モード中のみ表示。読み込みは「全置き換え」方式で、
+   実行前に確認モーダルを挟む（browser confirm() は使わない）。 */
+function buildExportPayload(){
+  return { app: "koe-board", key: LS_PHRASES, exportedAt: new Date().toISOString(), phrases };
+}
+
+// カテゴリ名=文字列キー・値=空でない文字列の配列、という形だけを受け入れる
+function validatePhrases(obj){
+  if(!obj || typeof obj !== "object" || Array.isArray(obj)) return false;
+  const cats = Object.keys(obj);
+  if(cats.length === 0) return false;
+  // 空配列のカテゴリは許容（編集で全部削除した状態のバックアップも復元できるように）
+  return cats.every(c => Array.isArray(obj[c]) &&
+    obj[c].every(p => typeof p === "string" && p.trim() !== ""));
+}
+
+// export 形式（{phrases:{...}}）と生の {カテゴリ:[...]} の両方を受け入れる
+function applyImportedPhrases(parsed){
+  const obj = (parsed && typeof parsed === "object" && !Array.isArray(parsed) && parsed.phrases !== undefined)
+    ? parsed.phrases : parsed;
+  if(!validatePhrases(obj)) return {ok:false, error:"ことばのファイルの形式が正しくありません"};
+  phrases = JSON.parse(JSON.stringify(obj));
+  savePhrases();
+  if(!(activeTab in phrases) && activeTab !== "もじ" && activeTab !== DAKU_TAB){
+    activeTab = Object.keys(phrases)[0];
+  }
+  renderTabs(); renderMain();
+  return {ok:true, count: Object.keys(phrases).length};
+}
+
+function exportPhrases(){
+  const d = new Date();
+  const ymd = d.getFullYear() + String(d.getMonth()+1).padStart(2,"0") + String(d.getDate()).padStart(2,"0");
+  const blob = new Blob([JSON.stringify(buildExportPayload(), null, 2)], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `koe-kotoba-${ymd}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+}
+
+// ファイル選択（非表示 input）→ JSON parse → 確認 → 置き換え
+const importFileEl = document.createElement("input");
+importFileEl.type = "file";
+importFileEl.accept = "application/json,.json";
+importFileEl.style.display = "none";
+document.body.appendChild(importFileEl);
+importFileEl.addEventListener("change", ()=>{
+  const f = importFileEl.files && importFileEl.files[0];
+  importFileEl.value = "";   // 同じファイルを選び直しても change が発火するように
+  if(!f) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    let parsed = null;
+    try{ parsed = JSON.parse(reader.result); }catch(e){}
+    if(parsed === null || !validatePhrases(parsed.phrases !== undefined ? parsed.phrases : parsed)){
+      openNotice("読み込めませんでした（ことばのファイルではありません）", [
+        {cls:"sb-cancel", label:"とじる", fn:closeModal}
+      ]);
+      return;
+    }
+    openNotice("いまの ことばを ファイルの内容に 置き換えます。よろしいですか？", [
+      {cls:"sb-ok", label:"置き換える", fn:()=>{
+        const r = applyImportedPhrases(parsed);
+        closeModal();
+        if(r.ok){
+          openNotice(`読み込みました（${r.count} カテゴリ）`, [{cls:"sb-ok", label:"とじる", fn:closeModal}]);
+        }else{
+          openNotice(r.error, [{cls:"sb-cancel", label:"とじる", fn:closeModal}]);
+        }
+      }},
+      {cls:"sb-cancel", label:"やめる", fn:closeModal}
+    ]);
+  };
+  reader.readAsText(f);
+});
 
 /* ---------- フォント倍率 ---------- */
 function setFontScale(fs){

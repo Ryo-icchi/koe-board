@@ -165,6 +165,19 @@ try{
   check("並べ替え: もじタブは先頭のまま固定", await evalJs(send, `document.querySelector('.tab').textContent.includes('もじ')`));
   check("並べ替え: カテゴリ順がlocalStorageに保存", await evalJs(send, `(()=>{const n=[...document.querySelectorAll('.tab.cat')].map(t=>t.dataset.cat);const k=Object.keys(JSON.parse(localStorage.getItem('koe.phrases.v1')));return k[0]===n[0]&&k[1]===n[1];})()`));
 
+  // 7.7 バックアップ: export payload / import 検証 / UI 表示
+  check("バックアップ: export payload が localStorage と一致", await evalJs(send, `(()=>{const p=buildExportPayload();return p.app==='koe-board'&&p.key==='koe.phrases.v1'&&typeof p.exportedAt==='string'&&JSON.stringify(p.phrases)===localStorage.getItem('koe.phrases.v1');})()`));
+  check("バックアップ: 不正な形式の import は拒否+localStorage不変", await evalJs(send, `(()=>{const before=localStorage.getItem('koe.phrases.v1');const r=applyImportedPhrases({phrases:{"x":123}});return r.ok===false&&localStorage.getItem('koe.phrases.v1')===before;})()`));
+  check("バックアップ: 空オブジェクトの import は拒否される", await evalJs(send, `applyImportedPhrases({}).ok===false`));
+  check("バックアップ: 正常な import で置き換え+localStorage反映", await evalJs(send, `(()=>{const r=applyImportedPhrases({app:'koe-board',phrases:{'よみこみ確認':['テスト読込語','はい']}});const s=JSON.parse(localStorage.getItem('koe.phrases.v1'));return r.ok===true&&r.count===1&&s['よみこみ確認'][0]==='テスト読込語';})()`));
+  check("バックアップ: import 後にタブ・ことばが再描画される", await evalJs(send, `[...document.querySelectorAll('.tab.cat')].map(t=>t.dataset.cat).join()==='よみこみ確認' && [...document.querySelectorAll('.phrase span')].some(s=>s.textContent==='テスト読込語')`));
+  await evalJs(send, `document.querySelector('#btnEdit').click(); true`);
+  await sleep(120);
+  check("バックアップ: 編集モードでボタン2つが表示される", await evalJs(send, `(()=>{const b=document.querySelector('.backupbar');return !!b&&getComputedStyle(b).display==='flex'&&b.querySelectorAll('.bkbtn').length===2;})()`));
+  await evalJs(send, `document.querySelector('#btnEdit').click(); true`);
+  await sleep(120);
+  check("バックアップ: 通常モードではボタン非表示", await evalJs(send, `getComputedStyle(document.querySelector('.backupbar')).display==='none'`));
+
   // 8. フォント倍率（定型文タブ表示中＝フッター見える状態で）
   await evalJs(send, `[...document.querySelectorAll('#fontBtns .fbtn')].find(b=>b.dataset.fs==='1.2').click(); true`);
   check("文字大: --fs が1.2", (await evalJs(send, `getComputedStyle(document.documentElement).getPropertyValue('--fs').trim()`)) === "1.2");
